@@ -618,6 +618,7 @@ footer .wrap{padding-block:0}
   const mouse = new THREE.Vector2(), smoothMouse = new THREE.Vector2(), ray = new THREE.Raycaster();
   let hoverIdx = -1, hoverFromRay = -1;
   addEventListener('pointermove', e => {
+    if (e.pointerType !== 'mouse') return;
     mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   }, { passive: true });
   const canvas = renderer.domElement;
