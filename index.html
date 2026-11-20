@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Joshua Pinto's Portal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Interdimensional portfolio of Joshua Ligoury Pinto: cybersecurity engineer and aspiring web developer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Space+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: fixed WebGL space scene behind a scrolling column of cartoon "lab cards".
+   Scrolling flies the camera through a portal; a second portal waits at the contact section. */
+:root{
+  color-scheme: dark;
+  --void:#060a12;        /* deep space */
+  --void-2:#0e1626;      /* panel glass */
+  --portal:#8be04e;      /* portal goo (changes per dimension) */
+  --goo:#dff75e;         /* highlight goo */
+  --lab:#62e6ff;         /* lab readout cyan */
+  --paper:#f1f6e6;       /* cartoon card */
+  --paper-ink:#17200f;   /* text on card */
+  --ink:#0a0e09;         /* cartoon outline */
+  --muted:#a3b4aa;       /* secondary text on space */
+  --card-muted:#55624f;  /* secondary text on card */
+  --f-display:"Fredoka","Trebuchet MS","Segoe UI",system-ui,sans-serif;
+  --f-body:"DM Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --f-mono:"Space Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --wobble:26px 20px 28px 18px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--void);color:#eef4ea;font-family:var(--f-body);font-size:16px;line-height:1.6;overflow-x:hidden}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--goo);outline-offset:3px;border-radius:8px}
+
+/* ---------- 3D layer ---------- */
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+body.no-gl #scene{display:none}
+body.no-gl{background:radial-gradient(60% 50% at 70% 25%, color-mix(in srgb,var(--portal) 35%, transparent), transparent 70%), var(--void)}
+#flash{position:fixed;inset:0;z-index:5;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at 50% 50%, var(--goo) 0%, var(--portal) 30%, transparent 72%);transition:opacity .5s ease}
+#flash.on{opacity:.85;transition:opacity .08s ease}
+#labels{position:fixed;inset:0;z-index:3;pointer-events:none}
+.planet-label{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;
+  font:600 13px/1 var(--f-display);letter-spacing:.02em;color:var(--ink);background:var(--goo);
+  border:2.5px solid var(--ink);border-radius:999px;padding:6px 11px;white-space:nowrap;
+  box-shadow:3px 3px 0 var(--ink);transform:translate(-50%,-50%);transition:background .15s, transform .15s}
+.planet-label:hover,.planet-label.hot{background:#fff}
+.planet-label[hidden]{display:none!important}
+
+/* ---------- top bar ---------- */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:11;background:var(--void)}
+.bar{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;z-index:10;display:flex;align-items:center;gap:14px;
+  padding-block:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:linear-gradient(var(--void) 10%, transparent)}
+.logo{width:42px;height:42px;flex:none;display:grid;place-items:center;text-decoration:none;
+  font:700 17px var(--f-display);color:var(--ink);background:var(--portal);border:3px solid var(--ink);
+  border-radius:50% 50% 50% 12px;box-shadow:3px 3px 0 var(--ink);transform:rotate(-6deg)}
+.bar nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+.bar nav a{font:500 15px var(--f-display);text-decoration:none;color:#dfe8da;padding:6px 10px;border-radius:999px}
+.bar nav a:hover{background:color-mix(in srgb,var(--portal) 22%, transparent);color:#fff}
+.hop{flex:none;font:600 14px var(--f-display);cursor:pointer;color:var(--ink);background:var(--goo);
+  border:3px solid var(--ink);border-radius:999px;padding:7px 14px 7px 10px;box-shadow:3px 3px 0 var(--ink);display:flex;align-items:center;gap:8px}
+.hop:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.hop .dot{width:14px;height:14px;border-radius:50%;background:var(--portal);border:2px solid var(--ink);animation:spin 2.5s linear infinite;
+  background:conic-gradient(var(--portal),var(--lab),var(--goo),var(--portal))}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (max-width:860px){.bar nav{display:none}.hop{margin-left:auto}}
+
+/* ---------- content column ---------- */
+main{position:relative;z-index:2;pointer-events:none}
+main a, main button, .card, .readout, .term, .timeline li, .chip, .belt-group{pointer-events:auto}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+section{padding-block:72px}
+
+/* hero */
+.hero{padding-block:clamp(120px,22vh,200px) clamp(90px,18vh,170px)}
+.hero .wrap{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
+.hero-copy{min-width:0;max-width:600px}
+.eyebrow{font:400 13px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--lab);display:inline-flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--portal);box-shadow:0 0 12px var(--portal)}
+h1{font:700 clamp(46px,8.4vw,96px)/.92 var(--f-display);margin:18px 0 22px;letter-spacing:-.01em;text-wrap:balance;
+  color:var(--paper);text-shadow:4px 4px 0 var(--ink), 0 0 40px color-mix(in srgb,var(--portal) 45%, transparent)}
+h1 .goo{color:var(--portal);display:inline-block;animation:wob 4s ease-in-out infinite}
+@keyframes wob{0%,100%{transform:rotate(-2deg) translateY(0)}50%{transform:rotate(2deg) translateY(-4px)}}
+.lead{font:600 clamp(21px,2.6vw,28px)/1.25 var(--f-display);margin:0 0 14px;color:#fff;text-wrap:balance}
+.lead em{font-style:normal;color:var(--goo)}
+.sub{color:var(--muted);max-width:52ch;margin:0 0 28px}
+.ctas{display:flex;flex-wrap:wrap;gap:14px}
+.btn{font:600 17px var(--f-display);text-decoration:none;border:3px solid var(--ink);border-radius:999px;padding:12px 22px;
+  box-shadow:4px 4px 0 var(--ink);transition:transform .12s, box-shadow .12s;display:inline-flex;align-items:center;gap:10px;cursor:pointer}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
+.btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink)}
+.btn.primary{background:var(--portal);color:var(--ink)}
+.btn.ghost{background:var(--paper);color:var(--ink)}
+.hint{margin-top:26px;font:400 12.5px var(--f-mono);color:var(--muted);display:flex;gap:10px;align-items:center}
+.hint kbd{font:700 11px var(--f-mono);color:var(--ink);background:var(--lab);border-radius:6px;padding:2px 6px;border:2px solid var(--ink)}
+@media (max-width:860px){
+  .hero{padding-top:min(62vh,520px)}
+  .hero .wrap{grid-template-columns:1fr}
+}
+
+/* section titles with goo drip */
+.sec-head{display:flex;flex-direction:column;align-items:flex-start;margin-bottom:34px}
+.sec-tag{font:400 13px var(--f-mono);color:var(--lab);letter-spacing:.1em;text-transform:uppercase}
+.sec-title{font:700 clamp(36px,5.4vw,58px)/1 var(--f-display);margin:8px 0 0;color:var(--paper);text-shadow:3px 3px 0 var(--ink);text-wrap:balance}
+.drip{display:block;width:150px;height:28px;color:var(--portal);margin-top:6px}
+
+/* cards */
+.card{background:var(--paper);color:var(--paper-ink);border:3px solid var(--ink);border-radius:var(--wobble);
+  box-shadow:7px 7px 0 var(--portal);padding:26px 26px 24px;min-width:0;transition:box-shadow .2s, transform .2s;transform-style:preserve-3d}
+.card h3{font:700 25px/1.12 var(--f-display);margin:0 0 8px;color:var(--ink);text-wrap:balance}
+.card p{margin:0 0 12px}
+.card p:last-child{margin-bottom:0}
+.card .meta{font:400 12.5px var(--f-mono);color:var(--card-muted);letter-spacing:.04em}
+.card a.link{font:700 14px var(--f-mono);color:var(--ink);text-decoration:none;border-bottom:3px solid var(--portal)}
+.card a.link:hover{background:color-mix(in srgb,var(--portal) 35%, transparent)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 14px}
+.chip{font:600 13px var(--f-display);padding:4px 11px;border-radius:999px;border:2px solid var(--ink);background:#fff;color:var(--ink)}
+.chip.hot{background:var(--goo)}
+
+/* lab notes */
+.lab-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:28px;align-items:start}
+.lab-grid .card p{font-size:17px}
+.readout{background:color-mix(in srgb,var(--void-2) 88%, transparent);border:2px solid color-mix(in srgb,var(--lab) 55%, transparent);
+  border-radius:18px;padding:20px 22px;font-family:var(--f-mono);backdrop-filter:blur(6px);min-width:0;
+  box-shadow:0 0 0 6px color-mix(in srgb,var(--lab) 8%, transparent), inset 0 0 40px color-mix(in srgb,var(--lab) 8%, transparent)}
+.readout .top{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.14em;color:var(--lab);text-transform:uppercase;margin-bottom:12px}
+.readout .top span:last-child{animation:blink 1.2s steps(2) infinite}
+@keyframes blink{50%{opacity:.2}}
+.readout dl{margin:0;display:grid;gap:12px}
+.readout .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-bottom:1px dashed color-mix(in srgb,var(--lab) 30%, transparent);padding-bottom:10px}
+.readout .row:last-child{border-bottom:0;padding-bottom:0}
+.readout dt{font-size:12.5px;color:var(--muted)}
+.readout dd{margin:0;font:700 26px var(--f-display);color:var(--goo);font-variant-numeric:tabular-nums}
+@media (max-width:860px){.lab-grid{grid-template-columns:1fr}}
+
+/* inventions */
+.inv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px}
+.inv-grid .feature{grid-column:1 / -1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:28px;align-items:start}
+.badge{display:inline-block;font:700 11px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;background:var(--ink);color:var(--goo);border-radius:6px;padding:3px 8px;margin-bottom:10px}
+.term{background:#0b120d;color:#cfe8c9;border:3px solid var(--ink);border-radius:16px;font:400 12.5px/1.6 var(--f-mono);overflow:hidden;min-width:0}
+.term-bar{display:flex;align-items:center;gap:7px;padding:9px 12px;background:#18241a;border-bottom:2px solid var(--ink)}
+.term-bar i{width:11px;height:11px;border-radius:50%;background:#ff6b6b;border:1.5px solid var(--ink)}
+.term-bar i:nth-child(2){background:#ffd36b}.term-bar i:nth-child(3){background:var(--portal)}
+.term-bar button{margin-left:auto;font:700 11.5px var(--f-mono);color:var(--ink);background:var(--portal);border:2px solid var(--ink);border-radius:6px;padding:3px 9px;cursor:pointer}
+.term pre{margin:0;padding:14px 16px 16px;white-space:pre-wrap;word-break:break-word;min-height:212px}
+.term .p{color:var(--goo)} .term .c{color:#ff8a8a;font-weight:700} .term .m{color:#ffd36b;font-weight:700} .term .d{color:#7f9a86}
+.cursor{display:inline-block;width:8px;height:15px;background:var(--portal);vertical-align:-3px;animation:blink 1s steps(2) infinite}
+@media (max-width:860px){.inv-grid{grid-template-columns:1fr}.inv-grid .feature{grid-template-columns:1fr}}
+
+/* gadget belt */
+.belt{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:22px}
+.belt-group{background:color-mix(in srgb,var(--void-2) 86%, transparent);border:2.5px solid color-mix(in srgb,var(--portal) 60%, var(--ink));
+  border-radius:20px;padding:18px 18px 20px;backdrop-filter:blur(6px);min-width:0}
+.belt-group h3{font:600 20px var(--f-display);margin:0 0 4px;color:var(--goo)}
+.belt-group p.note{font:400 12px var(--f-mono);color:var(--muted);margin:0 0 12px}
+.belt-group .chips{margin:0}
+.belt-group .chip{background:var(--paper);transition:transform .15s, background .15s;cursor:default}
+.belt-group .chip:hover{transform:translateY(-3px) rotate(-3deg);background:var(--goo)}
+.belt-group.charging{border-style:dashed;border-color:var(--lab)}
+.belt-group.charging h3{color:var(--lab)}
+.belt-group.charging .chip{background:transparent;color:var(--lab);border-color:var(--lab);border-style:dashed}
+
+/* missions */
+.timeline{list-style:none;margin:0;padding:0 0 0 34px;position:relative;display:grid;gap:22px;max-width:820px}
+.timeline::before{content:"";position:absolute;left:11px;top:6px;bottom:6px;width:6px;border-radius:6px;
+  background:linear-gradient(var(--portal),var(--lab));box-shadow:0 0 16px color-mix(in srgb,var(--portal) 60%, transparent)}
+.timeline li{position:relative}
+.timeline li::before{content:"";position:absolute;left:-31px;top:22px;width:18px;height:18px;border-radius:50%;background:var(--goo);border:3px solid var(--ink)}
+.timeline .card{padding:18px 22px}
+.timeline .card h3{font-size:21px;margin-bottom:4px}
+.when{font:700 12px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--card-muted)}
+
+/* training */
+.train-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:28px;align-items:start}
+.edu{display:grid;gap:22px}
+.certs{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:12px}
+.certs li{display:flex;gap:12px;align-items:flex-start}
+.certs .seal{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 13px var(--f-display);
+  background:var(--goo);border:2.5px solid var(--ink);color:var(--ink)}
+.certs b{display:block;font:600 17px var(--f-display);color:var(--ink)}
+.certs span{font-size:14px;color:var(--card-muted)}
+@media (max-width:860px){.train-grid{grid-template-columns:1fr}}
+
+/* contact */
+.contact{padding-block:110px 150px}
+.contact .card{max-width:760px;margin:0 auto;text-align:left;box-shadow:9px 9px 0 var(--portal), 0 0 80px color-mix(in srgb,var(--portal) 35%, transparent)}
+.contact h2{font:700 clamp(36px,6vw,62px)/1 var(--f-display);margin:0 0 12px;color:var(--ink)}
+.contact p.big{font-size:18px;max-width:54ch}
+.mail{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:20px 0 22px}
+.mail code{font:700 clamp(15px,2.4vw,19px) var(--f-mono);background:#fff;border:2.5px solid var(--ink);border-radius:12px;padding:9px 14px;color:var(--ink);user-select:all;word-break:break-all;min-width:0}
+.mail .btn{font-size:15px;padding:9px 16px}
+.socials{display:flex;flex-wrap:wrap;gap:12px}
+.where{margin-top:18px;font:400 13px var(--f-mono);color:var(--card-muted)}
+footer{position:relative;z-index:2;text-align:center;font:400 12.5px var(--f-mono);color:var(--muted);padding-block:0 40px}
+footer .wrap{padding-block:0}
+</style>
+</head>
+<body>
+
+<canvas id="scene" aria-hidden="true"></canvas>
+<div id="labels" aria-label="Planet shortcuts"></div>
+<div id="flash" aria-hidden="true"></div>
+
+<header class="bar">
+  <a class="logo" href="#top" aria-label="Back to top">JP</a>
+  <nav aria-label="Sections">
+    <a href="#lab">Lab notes</a>
+    <a href="#inventions">Inventions</a>
+    <a href="#gadgets">Gadgets</a>
+    <a href="#missions">Missions</a>
+    <a href="#training">Training</a>
+    <a href="#contact">Contact</a>
+  </nav>
+  <button class="hop" id="hop" type="button" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="hopName">Hop dimension</span></button>
+</header>
+
+<main id="top">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-copy">
+        <div class="eyebrow" id="dimLabel">Dimension JP-27 · Earth</div>
+        <h1>Joshua Ligoury <span class="goo">Pinto</span></h1>
+        <p class="lead">I learned how websites <em>break</em>.<br>Now I build ones that <em>don't</em>.</p>
+        <p class="sub">Cybersecurity engineer from Mangalore, looking for a web development internship where I can ship real sites, learn fast and bring a security habit to every page.</p>
+        <div class="ctas">
+          <a class="btn primary" href="#lab">Jump through the portal <span aria-hidden="true">↓</span></a>
+          <a class="btn ghost" href="#inventions">See my inventions</a>
+        </div>
+        <div class="hint"><kbd>click</kbd> a planet to travel · empty space fires a mini portal</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LAB NOTES -->
+  <section id="lab">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-tag">// about the scientist</span><h2 class="sec-title">Lab notes</h2></div>
+      <div class="lab-grid">
+        <div class="card tilt">
+          <p>I'm a <b>cybersecurity engineer</b> from NMAM Institute of Technology, Nitte. My VAPT internship and bug hunting put me inside a lot of web apps: login forms, sessions, headers and every item on the OWASP Top 10. That's how I learned what really happens under the hood of a website.</p>
+          <p>Now I want to build them. I've already shipped an HTML/CSS report UI for my own security tool, and I'm learning more of the front-end and CMS side every week.</p>
+          <p>Away from the keyboard I play university basketball, debate, and run events as Sports Coordinator and Joint Secretary of the IIC Club. I'm comfortable presenting to a room and working fast with a team.</p>
+        </div>
+        <div class="readout" role="group" aria-label="Quick stats">
+          <div class="top"><span>Specimen readout</span><span>● live</span></div>
+          <dl>
+            <div class="row"><dt>Automated tests passing in LogSentinel</dt><dd>53</dd></div>
+            <div class="row"><dt>NPTEL Elite score, IIT Madras</dt><dd>91%</dd></div>
+            <div class="row"><dt>OWASP Top 10 categories studied</dt><dd>10/10</dd></div>
+            <div class="row"><dt>Graduating</dt><dd>2027</dd></div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INVENTIONS -->
+  <section id="inventions">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-tag">// things I've built</span><h2 class="sec-title">Inventions</h2></div>
+      <div class="inv-grid">
+        <article class="card feature tilt">
+          <div>
+            <span class="badge">Flagship build</span>
+            <h3>LogSentinel</h3>
+            <p>A log-based intrusion detector. It reads web server, SSH and firewall logs, catches brute-force logins, port scans and content-discovery scans, then maps every finding to MITRE ATT&amp;CK and links them into attack chains.</p>
+            <p>It writes a self-contained <b>HTML/CSS report</b> with CSS Grid summary cards and a findings table, plus CSV and JSON exports.</p>
+            <div class="chips"><span class="chip hot">HTML/CSS</span><span class="chip">Python</span><span class="chip">GitHub Actions</span><span class="chip">53 tests</span><span class="chip">Zero dependencies</span></div>
+            <a class="link" href="https://github.com/Joshua-error/logsentinel" target="_blank" rel="noopener">github.com/Joshua-error/logsentinel ↗</a>
+          </div>
+          <div class="term">
+            <div class="term-bar"><i></i><i></i><i></i><button type="button" id="runBtn">▶ Run again</button></div>
+            <pre id="termOut" aria-label="Sample LogSentinel output"></pre>
+          </div>
+        </article>
+
+        <article class="card tilt">
+          <span class="badge">Team project</span>
+          <h3>EVODNA-X</h3>
+          <p>Explainable IoT security for edge devices on Raspberry Pi 5 and ESP32. A behavioural "Cyber DNA" model spots devices acting out of character, backed by anomaly detection, automatic defence responses and a honeypot. SHAP and LIME explain every alert.</p>
+          <p class="meta">MY PART: synopsis with 20 IEEE-style references, the presentation deck and the hardware bill of materials.</p>
+          <div class="chips"><span class="chip">Raspberry Pi 5</span><span class="chip">ESP32</span><span class="chip">Explainable AI</span></div>
+        </article>
+
+        <article class="card tilt">
+          <span class="badge">Research</span>
+          <h3>Cybersecurity research report</h3>
+          <p>A structured guide to the CIA triad, AAA, red, blue and purple teams, and cryptography, using real breaches as case studies: Twitter in 2022 and MOVEit in 2023.</p>
+          <div class="chips"><span class="chip">Technical writing</span><span class="chip">Case studies</span></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- GADGETS -->
+  <section id="gadgets">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-tag">// skills on the belt</span><h2 class="sec-title">Gadget belt</h2></div>
+      <div class="belt">
+        <div class="belt-group"><h3>Web</h3><p class="note">building and understanding sites</p>
+          <div class="chips"><span class="chip" title="Built LogSentinel's HTML report with CSS Grid">HTML &amp; CSS</span><span class="chip">CSS Grid</span><span class="chip">HTTP &amp; sessions</span><span class="chip">Web server logs</span></div></div>
+        <div class="belt-group"><h3>Security</h3><p class="note">how websites break</p>
+          <div class="chips"><span class="chip">OWASP Top 10</span><span class="chip">VAPT</span><span class="chip">Bug hunting</span><span class="chip">Ethical hacking</span><span class="chip">MITRE ATT&amp;CK</span></div></div>
+        <div class="belt-group"><h3>Tools</h3><p class="note">what's on my desk</p>
+          <div class="chips"><span class="chip">Python</span><span class="chip">Git &amp; GitHub</span><span class="chip">GitHub Actions</span><span class="chip">Kali Linux</span><span class="chip">MS Office</span></div></div>
+        <div class="belt-group"><h3>People</h3><p class="note">the non-code half of the job</p>
+          <div class="chips"><span class="chip">Public speaking</span><span class="chip">Debate</span><span class="chip">Presentations</span><span class="chip">Teamwork</span><span class="chip">Event coordination</span></div></div>
+        <div class="belt-group charging"><h3>Charging up</h3><p class="note">learning right now</p>
+          <div class="chips"><span class="chip">JavaScript</span><span class="chip">MySQL</span><span class="chip">WordPress / CMS</span><span class="chip">CompTIA Security+</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MISSIONS -->
+  <section id="missions">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-tag">// where I've been</span><h2 class="sec-title">Missions</h2></div>
+      <ol class="timeline">
+        <li><div class="card"><div class="when">Jun – Jul 2026</div><h3>Cybersecurity Intern · EyeQ Dot Net Pvt. Ltd.</h3>
+          <p>Tested web applications for OWASP Top 10 vulnerabilities in controlled lab environments. Hands-on with Kali Linux, bug hunting, VAPT and ethical hacking.</p></div></li>
+        <li><div class="card"><div class="when">2024 – 25</div><h3>Joint Secretary · IIC Club</h3>
+          <p>Helped run the club's sessions and events alongside the student team.</p></div></li>
+        <li><div class="card"><div class="when">2024 – 25</div><h3>Sports Coordinator</h3>
+          <p>Coordinated sports activities and kept teams, schedules and people moving.</p></div></li>
+        <li><div class="card"><div class="when">Ongoing</div><h3>University basketball player</h3>
+          <p>Teamwork, communication and staying calm under pressure, every game.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- TRAINING -->
+  <section id="training">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-tag">// education &amp; certs</span><h2 class="sec-title">Training grounds</h2></div>
+      <div class="train-grid">
+        <div class="edu">
+          <div class="card tilt"><div class="when">2023 – 2027</div><h3>NMAM Institute of Technology, Nitte</h3><p>Cyber Security Engineering</p></div>
+          <div class="card tilt"><div class="when">2021 – 2023</div><h3>St. Aloysius Pre-University College</h3><p>Pre-University, Mangalore</p></div>
+        </div>
+        <div class="card">
+          <h3>Certifications</h3>
+          <ul class="certs">
+            <li><span class="seal">91</span><div><b>NPTEL Elite: Internet Crimes &amp; Cyber Security</b><span>IIT Madras · Feb – Apr 2026 · 91%</span></div></li>
+            <li><span class="seal">S+</span><div><b>CompTIA Security+</b><span>In progress</span></div></li>
+            <li><span class="seal">H</span><div><b>Hashgraph Developer Course</b><span>The Hashgraph Association · Oct 2025</span></div></li>
+            <li><span class="seal">W</span><div><b>Hedera Blockchain Workshop</b><span>NMAM Institute of Technology · Oct 2025</span></div></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section id="contact" class="contact">
+    <div class="wrap">
+      <div class="card">
+        <span class="badge">Portal open</span>
+        <h2>Let's build something.</h2>
+        <p class="big">I'm looking for a web development internship. If your team has sites to create, maintain or lock down, I'd love to help.</p>
+        <div class="mail">
+          <code id="email">thejoshuapinto9@gmail.com</code>
+          <button class="btn primary" type="button" id="copyBtn">Copy email</button>
+        </div>
+        <div class="socials">
+          <a class="btn ghost" href="https://github.com/Joshua-error" target="_blank" rel="noopener">GitHub ↗</a>
+          <a class="btn ghost" href="https://www.linkedin.com/in/joshua-pinto-0b6073321" target="_blank" rel="noopener">LinkedIn ↗</a>
+        </div>
+        <p class="where">Mangalore, India · open to Bengaluru</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap">Built with HTML, CSS and three.js · © 2026 Joshua Ligoury Pinto</div></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finePointer = matchMedia('(pointer: fine)').matches;
+  const $ = s => document.querySelector(s);
+
+  /* ---------- goo drips under section titles ---------- */
+  const drip = '<svg class="drip" viewBox="0 0 160 30" aria-hidden="true"><path fill="currentColor" d="M0 6C0 2 4 0 8 0h144c4 0 8 2 8 6s-4 6-10 6h-32c-4 0-5 2-5 6v4c0 4-3 6-6 6s-6-2-6-6v-6c0-3-2-4-5-4H52c-3 0-4 1-4 4v2c0 3-2 4-4 4s-4-1-4-4v-3c0-2-1-3-3-3H8C4 12 0 10 0 6z"/></svg>';
+  document.querySelectorAll('.sec-title').forEach(h => h.insertAdjacentHTML('afterend', drip));
+
+  /* ---------- terminal ---------- */
+  const termLines = [
+    '<span class="p">$</span> logsentinel --auth auth.log --firewall ufw.log --web access.log',
+    '<span class="d">Parsed 700 lines -> 605 security events</span>',
+    '',
+    '6 finding(s):',
+    '<span class="c">CRITICAL</span>  LS-002  Successful SSH login after repeated failures',
+    '<span class="m">MEDIUM  </span>  LS-003  Port scan',
+    '<span class="m">MEDIUM  </span>  LS-001  SSH brute-force attempt',
+    '<span class="m">MEDIUM  </span>  LS-005  Low-and-slow SSH brute-force attempt',
+    '<span class="m">MEDIUM  </span>  LS-004  Web content discovery scan',
+    '',
+    'Attack chain: Discovery -> Credential Access',
+    '<span class="p">Reports written:</span> report.html, findings.csv, findings.json'
+  ];
+  const termOut = $('#termOut');
+  let termTimer = null;
+  function showTerm(){ termOut.innerHTML = termLines.join('\n') + ' <span class="cursor"></span>'; }
+  function runTerm(){
+    clearInterval(termTimer);
+    if (reduce){ showTerm(); return; }
+    let i = 0; termOut.innerHTML = '';
+    termTimer = setInterval(() => {
+      i++;
+      termOut.innerHTML = termLines.slice(0, i).join('\n') + ' <span class="cursor"></span>';
+      if (i >= termLines.length) clearInterval(termTimer);
+    }, 260);
+  }
+  showTerm();
+  $('#runBtn').addEventListener('click', runTerm);
+
+  /* ---------- copy email ---------- */
+  $('#copyBtn').addEventListener('click', e => {
+    const btn = e.currentTarget, text = $('#email').textContent;
+    const done = msg => { btn.textContent = msg; setTimeout(() => btn.textContent = 'Copy email', 1800); };
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents($('#email')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); done('Selected, press Ctrl+C'); };
+    try { navigator.clipboard.writeText(text).then(() => done('Copied!'), fallback); } catch (_) { fallback(); }
+  });
+
+  /* ---------- card tilt ---------- */
+  if (!reduce && finePointer){
+    document.querySelectorAll('.tilt').forEach(el => {
+      el.addEventListener('pointermove', e => {
+        const r = el.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+        el.style.transform = `perspective(900px) rotateY(${x * 7}deg) rotateX(${-y * 7}deg) translateZ(0)`;
+      });
+      el.addEventListener('pointerleave', () => { el.style.transform = ''; });
+    });
+  }
+
+  /* ---------- dimensions (palettes) ---------- */
+  const dims = [
+    { name:'JP-27 · Portal green', c1:'#13651c', c2:'#8be04e', c3:'#f0ff9c', css:{portal:'#8be04e', goo:'#dff75e', lab:'#62e6ff'}, planets:['#ff8fb1','#62e6ff','#ffcf5a','#b48cff','#7dffb2'] },
+    { name:'JP-42 · Plasma pink',  c1:'#6b1550', c2:'#ff5fa8', c3:'#ffe0ee', css:{portal:'#ff6fae', goo:'#ffd36b', lab:'#8cf2c9'}, planets:['#8cf2c9','#ffd36b','#9db4ff','#ff9f6b','#e4ff7a'] },
+    { name:'JP-09 · Cryo blue',    c1:'#173a85', c2:'#4fc8ff', c3:'#e6f8ff', css:{portal:'#5fd0ff', goo:'#c9b8ff', lab:'#a6ff8a'}, planets:['#ffb86b','#c9b8ff','#a6ff8a','#ff7f9f','#fff27a'] }
+  ];
+  let dimIndex = 0;
+
+  /* ---------- 3D scene ---------- */
+  let renderer;
+  try {
+    if (!window.THREE) throw new Error('no three');
+    renderer = new THREE.WebGLRenderer({ canvas: $('#scene'), antialias: true });
+  } catch (err) {
+    document.body.classList.add('no-gl');
+    wireHop(d => { const r = document.documentElement.style; r.setProperty('--portal', d.css.portal); r.setProperty('--goo', d.css.goo); r.setProperty('--lab', d.css.lab); });
+    return;
+  }
+  const small = Math.min(innerWidth, innerHeight) < 600;
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75));
+  renderer.setClearColor(0x060a12, 1);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x060a12, 0.016);
+  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 300);
+  camera.position.set(0, 0, 9);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(4, 6, 8); scene.add(sun);
+
+  /* stars */
+  const STARS = small ? 1100 : 2200;
+  const sPos = new Float32Array(STARS * 3), sCol = new Float32Array(STARS * 3);
+  const tint = [new THREE.Color('#ffffff'), new THREE.Color('#bfefff'), new THREE.Color('#fff3b0'), new THREE.Color('#ffc6e0')];
+  for (let i = 0; i < STARS; i++){
+    sPos[i*3]   = (Math.random() - .5) * 120;
+    sPos[i*3+1] = (Math.random() - .5) * 80;
+    sPos[i*3+2] = 20 - Math.random() * 170;
+    const c = tint[(Math.random() * tint.length) | 0];
+    sCol[i*3] = c.r; sCol[i*3+1] = c.g; sCol[i*3+2] = c.b;
+  }
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+  starGeo.setAttribute('color', new THREE.BufferAttribute(sCol, 3));
+  const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ size: .09, vertexColors: true, transparent: true, opacity: .9, depthWrite: false }));
+  scene.add(stars);
+
+  /* portal shader */
+  const portalUniforms = {
+    t:  { value: 0 },
+    c1: { value: new THREE.Color(dims[0].c1) },
+    c2: { value: new THREE.Color(dims[0].c2) },
+    c3: { value: new THREE.Color(dims[0].c3) }
+  };
+  const portalMat = new THREE.ShaderMaterial({
+    uniforms: portalUniforms, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: `
+      uniform float t; uniform vec3 c1; uniform vec3 c2; uniform vec3 c3; varying vec2 vUv;
+      float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+      float noise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+        return mix(mix(hash(i),hash(i+vec2(1,0)),f.x), mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x), f.y); }
+      float fbm(vec2 p){ float v=0.0, a=0.5; for(int i=0;i<5;i++){ v+=a*noise(p); p*=2.03; a*=0.5; } return v; }
+      void main(){
+        vec2 p = vUv*2.0-1.0;
+        float r = length(p), a = atan(p.y,p.x);
+        float edge = 0.70 + 0.07*fbm(vec2(cos(a), sin(a))*1.4 + vec2(t*0.4, t*0.3)) + 0.025*sin(a*6.0 + t*2.2);
+        float sw = a + r*7.0 - t*1.8;
+        vec2 q = vec2(cos(sw), sin(sw)) * r * 3.2;
+        float n = fbm(q + vec2(t*0.25, -t*0.2));
+        vec3 col = mix(c1, c2, smoothstep(0.25, 0.75, n));
+        col = mix(col, c3, smoothstep(0.62, 0.95, n) * (1.0 - r*0.6));
+        col += c3 * 0.55 * (1.0 - smoothstep(0.0, 0.42, r));
+        float inside = 1.0 - smoothstep(edge-0.005, edge+0.005, r);
+        float ring = smoothstep(edge-0.005, edge+0.005, r) * (1.0 - smoothstep(edge+0.045, edge+0.055, r));
+        float glow = (1.0 - smoothstep(edge+0.05, 1.0, r)) * (1.0 - inside - ring);
+        vec3 ink = vec3(0.04,0.055,0.035);
+        vec3 outCol = col*inside + ink*ring + c2*glow;
+        float alpha = inside + ring + glow*0.55;
+        if (alpha < 0.01) discard;
+        gl_FragColor = vec4(outCol, alpha);
+      }`
+  });
+
+  const portalA = new THREE.Group(); scene.add(portalA);
+  const portalMeshA = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 4.6), portalMat); portalA.add(portalMeshA);
+  const portalB = new THREE.Group(); scene.add(portalB);
+  portalB.add(new THREE.Mesh(new THREE.PlaneGeometry(9, 9), portalMat));
+  portalB.position.set(0, 0, -64);
+
+  /* particles spiralling into portal A */
+  const SPIRAL = small ? 260 : 480;
+  const spPos = new Float32Array(SPIRAL * 3), spData = [];
+  for (let i = 0; i < SPIRAL; i++) spData.push({ a: Math.random() * Math.PI * 2, r: .9 + Math.random() * 2.4, z: (Math.random() - .5) * .8, s: .4 + Math.random() * .8 });
+  const spGeo = new THREE.BufferGeometry(); spGeo.setAttribute('position', new THREE.BufferAttribute(spPos, 3));
+  const spMat = new THREE.PointsMaterial({ size: .06, color: new THREE.Color(dims[0].c3), transparent: true, opacity: .95, blending: THREE.AdditiveBlending, depthWrite: false });
+  portalA.add(new THREE.Points(spGeo, spMat));
+
+  /* toon planets */
+  const gradData = new Uint8Array([70,70,70, 160,160,160, 255,255,255]);
+  const gradientMap = new THREE.DataTexture(gradData, 3, 1, THREE.RGBFormat);
+  gradientMap.minFilter = gradientMap.magFilter = THREE.NearestFilter; gradientMap.needsUpdate = true;
+  const inkMat = new THREE.MeshBasicMaterial({ color: 0x0a0e09, side: THREE.BackSide });
+
+  const planetDefs = [
+    { label:'Inventions', target:'#inventions', off:[-2.5,  1.55, -.6], size:.55, ring:true },
+    { label:'Gadgets',    target:'#gadgets',    off:[ 2.55, 1.7, -1.2], size:.42 },
+    { label:'Missions',   target:'#missions',   off:[-2.2, -1.75,  .8], size:.36, moon:true },
+    { label:'Training',   target:'#training',   off:[ 2.4, -1.55,  .4], size:.48 },
+    { label:'Contact',    target:'#contact',    off:[ 0.2, -2.75, -1.6], size:.3 }
+  ];
+  const labelsLayer = $('#labels');
+  const planets = planetDefs.map((d, i) => {
+    const g = new THREE.Group();
+    const geo = new THREE.IcosahedronGeometry(d.size, 1);
+    const mat = new THREE.MeshToonMaterial({ color: new THREE.Color(dims[0].planets[i]), gradientMap, flatShading: true });
+    const body = new THREE.Mesh(geo, mat);
+    const outline = new THREE.Mesh(geo, inkMat); outline.scale.setScalar(1.09);
+    g.add(outline, body);
+    // craters
+    for (let k = 0; k < 3; k++){
+      const cr = new THREE.Mesh(new THREE.CircleGeometry(d.size * (.14 + Math.random() * .1), 10), new THREE.MeshBasicMaterial({ color: 0x0a0e09, transparent: true, opacity: .22 }));
+      const dir = new THREE.Vector3(Math.random() - .5, Math.random() - .5, .6 + Math.random()).normalize();
+      cr.position.copy(dir.clone().multiplyScalar(d.size * 1.005)); cr.lookAt(dir.multiplyScalar(5)); body.add(cr);
+    }
+    if (d.ring){
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(d.size * 1.7, d.size * .09, 6, 40), new THREE.MeshToonMaterial({ color: 0xfff27a, gradientMap }));
+      const ringInk = new THREE.Mesh(new THREE.TorusGeometry(d.size * 1.7, d.size * .14, 6, 40), inkMat);
+      ring.rotation.x = ringInk.rotation.x = 1.25; ring.rotation.y = ringInk.rotation.y = .3;
+      g.add(ringInk, ring);
+    }
+    let moon = null;
+    if (d.moon){
+      moon = new THREE.Group();
+      const m = new THREE.Mesh(new THREE.IcosahedronGeometry(d.size * .28, 0), new THREE.MeshToonMaterial({ color: 0xe8e8e8, gradientMap, flatShading: true }));
+      const mo = new THREE.Mesh(m.geometry, inkMat); mo.scale.setScalar(1.15);
+      m.position.x = mo.position.x = d.size * 1.9; moon.add(mo, m); g.add(moon);
+    }
+    portalA.add(g);
+    body.userData.idx = i; outline.userData.idx = i;
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'planet-label'; btn.textContent = d.label;
+    btn.addEventListener('click', () => go(d.target));
+    btn.addEventListener('pointerenter', () => hoverIdx = i);
+    btn.addEventListener('pointerleave', () => hoverIdx = -1);
+    labelsLayer.appendChild(btn);
+    return { d, g, body, outline, mat, moon, btn, phase: Math.random() * 6.28, scale: 1 };
+  });
+  const pickables = planets.flatMap(p => [p.body, p.outline]);
+
+  function go(sel){ const el = $(sel); if (el) el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); }
+
+  /* mini portals + bursts on click */
+  const minis = [];
+  const BURST = 500, bPos = new Float32Array(BURST * 3).fill(9999), bVel = new Float32Array(BURST * 3), bLife = new Float32Array(BURST);
+  const bGeo = new THREE.BufferGeometry(); bGeo.setAttribute('position', new THREE.BufferAttribute(bPos, 3));
+  const bMat = new THREE.PointsMaterial({ size: .08, color: new THREE.Color(dims[0].c3), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  scene.add(new THREE.Points(bGeo, bMat));
+  let bHead = 0;
+  function spawnPortal(point){
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), portalMat);
+    m.position.copy(point); m.lookAt(camera.position); m.scale.setScalar(.01); scene.add(m);
+    minis.push({ m, t: 0 });
+    if (minis.length > 6){ const old = minis.shift(); scene.remove(old.m); old.m.geometry.dispose(); }
+    for (let k = 0; k < 70; k++){
+      const i = bHead; bHead = (bHead + 1) % BURST;
+      bPos[i*3] = point.x; bPos[i*3+1] = point.y; bPos[i*3+2] = point.z;
+      const th = Math.random() * 6.283, ph = Math.acos(2 * Math.random() - 1), sp = 1.2 + Math.random() * 2.4;
+      bVel[i*3] = Math.sin(ph) * Math.cos(th) * sp; bVel[i*3+1] = Math.sin(ph) * Math.sin(th) * sp; bVel[i*3+2] = Math.cos(ph) * sp;
+      bLife[i] = .8 + Math.random() * .6;
+    }
+  }
+
+  /* input */
+  const mouse = new THREE.Vector2(), smoothMouse = new THREE.Vector2(), ray = new THREE.Raycaster();
+  let hoverIdx = -1, hoverFromRay = -1;
+  addEventListener('pointermove', e => {
+    mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  }, { passive: true });
+  const canvas = renderer.domElement;
+  canvas.addEventListener('click', e => {
+    const ndc = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObjects(pickables, false)[0];
+    if (hit){ go(planetDefs[hit.object.userData.idx].target); return; }
+    const dir = new THREE.Vector3(ndc.x, ndc.y, .5).unproject(camera).sub(camera.position).normalize();
+    spawnPortal(camera.position.clone().add(dir.multiplyScalar(6)));
+  });
+
+  /* dimension hop */
+  function applyDim(d){
+    const root = document.documentElement.style;
+    root.setProperty('--portal', d.css.portal); root.setProperty('--goo', d.css.goo); root.setProperty('--lab', d.css.lab);
+    portalUniforms.c1.value.set(d.c1); portalUniforms.c2.value.set(d.c2); portalUniforms.c3.value.set(d.c3);
+    spMat.color.set(d.c3); bMat.color.set(d.c3);
+    planets.forEach((p, i) => p.mat.color.set(d.planets[i]));
+    $('#dimLabel').textContent = 'Dimension ' + d.name.split(' · ')[0] + ' · ' + d.name.split(' · ')[1];
+  }
+  function flash(){
+    if (reduce) return;
+    const f = $('#flash'); f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 140);
+  }
+  function wireHop(onApply){
+    $('#hop').addEventListener('click', () => {
+      dimIndex = (dimIndex + 1) % dims.length;
+      const d = dims[dimIndex];
+      $('#hopName').textContent = d.name.split(' · ')[1];
+      onApply(d);
+    });
+  }
+  wireHop(d => { applyDim(d); flash(); });
+
+  /* layout: where portal A sits */
+  let portalHome = new THREE.Vector3(2.7, .1, 0);
+  function resize(){
+    const w = innerWidth, h = innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    const narrow = w < 860;
+    portalHome.set(narrow ? 0 : 2.75, narrow ? 1.9 : .1, 0);
+    portalA.scale.setScalar(narrow ? .72 : 1);
+  }
+  addEventListener('resize', resize); resize();
+
+  /* scroll -> camera */
+  const ease = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+  const clamp01 = x => Math.max(0, Math.min(1, x));
+  function targets(){
+    const s = scrollY, vh = innerHeight;
+    const max = Math.max(vh + 1, document.documentElement.scrollHeight - vh);
+    const h = ease(clamp01(s / (vh * 1.1)));
+    const rest = clamp01((s - vh * 1.1) / (max - vh * 1.1));
+    const z = s <= vh * 1.1 ? 9 - 11 * h : -2 - 55 * rest;
+    const leave = ease(clamp01(rest * 5));
+    const x = portalHome.x * portalA.scale.x * h * (1 - leave);
+    const y = portalHome.y * h * (1 - leave);
+    return { x, y, z, h };
+  }
+
+  /* loop */
+  const clock = new THREE.Clock();
+  const tmp = new THREE.Vector3();
+  let lastZ = camera.position.z, time = 0;
+  function frame(){
+    const dt = Math.min(clock.getDelta(), .05);
+    time += reduce ? dt * .25 : dt;
+    portalUniforms.t.value = time;
+    smoothMouse.lerp(mouse, .06);
+
+    const tg = targets();
+    const k = reduce ? 1 : 1 - Math.pow(.0015, dt);
+    camera.position.x += (tg.x + smoothMouse.x * .5 - camera.position.x) * k;
+    camera.position.y += (tg.y + smoothMouse.y * .35 - camera.position.y) * k;
+    camera.position.z += (tg.z - camera.position.z) * k;
+    camera.lookAt(camera.position.x + smoothMouse.x * .4, camera.position.y + smoothMouse.y * .25, camera.position.z - 10);
+
+    // crossing the portal plane
+    if ((lastZ > 0) !== (camera.position.z > 0)) flash();
+    lastZ = camera.position.z;
+
+    portalA.position.copy(portalHome);
+    portalA.position.y += Math.sin(time * .8) * .08;
+    portalMeshA.rotation.z = Math.sin(time * .3) * .05;
+    portalB.rotation.z = time * .05;
+    portalB.visible = camera.position.z < 1.5;
+
+    // spiral particles
+    for (let i = 0; i < SPIRAL; i++){
+      const p = spData[i];
+      p.a += dt * (1.6 / p.r) * p.s * 1.6;
+      p.r -= dt * .35 * p.s;
+      if (p.r < .25){ p.r = 2.4 + Math.random() * 1.2; p.a = Math.random() * 6.283; }
+      spPos[i*3] = Math.cos(p.a) * p.r; spPos[i*3+1] = Math.sin(p.a) * p.r; spPos[i*3+2] = p.z * (p.r / 3);
+    }
+    spGeo.attributes.position.needsUpdate = true;
+
+    // planets
+    ray.setFromCamera(mouse, camera);
+    const hit = finePointer ? ray.intersectObjects(pickables, false)[0] : null;
+    hoverFromRay = hit ? hit.object.userData.idx : -1;
+    canvas.style.cursor = hoverFromRay >= 0 ? 'pointer' : 'crosshair';
+    const showLabels = scrollY < innerHeight * .75;
+    planets.forEach((p, i) => {
+      const o = p.d.off;
+      p.g.position.set(o[0] + Math.sin(time * .5 + p.phase) * .12, o[1] + Math.cos(time * .6 + p.phase) * .14, o[2]);
+      p.body.rotation.y += dt * .35; p.body.rotation.x += dt * .12;
+      if (p.moon) p.moon.rotation.y += dt * 1.1;
+      const hot = i === hoverIdx || i === hoverFromRay;
+      p.scale += ((hot ? 1.22 : 1) - p.scale) * .15; p.g.scale.setScalar(p.scale);
+      // label
+      p.g.getWorldPosition(tmp);
+      tmp.y += p.d.size * portalA.scale.x * 1.75;
+      const v = tmp.project(camera);
+      const visible = showLabels && v.z < 1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05;
+      p.btn.hidden = !visible;
+      if (visible){
+        p.btn.style.transform = `translate(${(v.x * .5 + .5) * innerWidth}px, ${(-v.y * .5 + .5) * innerHeight}px) translate(-50%,-50%)`;
+        p.btn.classList.toggle('hot', hot);
+      }
+    });
+
+    // mini portals
+    for (let i = minis.length - 1; i >= 0; i--){
+      const mp = minis[i]; mp.t += dt;
+      const s = mp.t < .25 ? ease(mp.t / .25) : mp.t > 1.1 ? Math.max(0, 1 - (mp.t - 1.1) / .3) : 1;
+      mp.m.scale.setScalar(Math.max(s, .001));
+      mp.m.rotation.z += dt * 2;
+      if (mp.t > 1.4){ scene.remove(mp.m); mp.m.geometry.dispose(); minis.splice(i, 1); }
+    }
+    // burst particles
+    for (let i = 0; i < BURST; i++){
+      if (bLife[i] <= 0) continue;
+      bLife[i] -= dt;
+      if (bLife[i] <= 0){ bPos[i*3] = 9999; continue; }
+      bVel[i*3+1] -= dt * 1.2;
+      bPos[i*3] += bVel[i*3] * dt; bPos[i*3+1] += bVel[i*3+1] * dt; bPos[i*3+2] += bVel[i*3+2] * dt;
+      bVel[i*3] *= .985; bVel[i*3+2] *= .985;
+    }
+    bGeo.attributes.position.needsUpdate = true;
+
+    stars.rotation.z = time * .004;
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
