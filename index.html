@@ -218,6 +218,29 @@ mark.hl.on, .no-io mark.hl{background-size:100% 100%}
 .where{margin-top:18px;font:400 13px var(--f-mono);color:var(--card-muted)}
 footer{position:relative;z-index:2;text-align:center;font:400 12.5px var(--f-mono);color:var(--muted);padding-block:0 40px}
 footer .wrap{padding-block:0}
+
+/* ---------- voice portal: "Hey Portal" wake word ---------- */
+.vp{position:fixed;z-index:12;right:max(16px,env(safe-area-inset-right,0px));bottom:max(18px,env(safe-area-inset-bottom,0px));
+  display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none}
+.vp-btn{pointer-events:auto;width:58px;height:58px;border-radius:50%;cursor:pointer;display:grid;place-items:center;
+  background:var(--paper);color:var(--ink);border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink);transition:transform .12s, background .2s}
+.vp-btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink)}
+.vp-btn svg{width:26px;height:26px}
+.vp[data-state="idle"] .vp-btn{background:var(--portal)}
+.vp[data-state="awake"] .vp-btn{background:var(--goo);animation:vpPulse 1s ease-in-out infinite}
+@keyframes vpPulse{0%,100%{box-shadow:4px 4px 0 var(--ink),0 0 0 0 color-mix(in srgb,var(--goo) 70%, transparent)}
+  50%{box-shadow:4px 4px 0 var(--ink),0 0 0 14px transparent}}
+.vp-bubble{pointer-events:auto;max-width:min(300px,78vw);font:500 14px/1.4 var(--f-body);color:#eef4ea;
+  background:color-mix(in srgb,var(--void) 88%, transparent);border:2px solid color-mix(in srgb,var(--portal) 55%, var(--ink));
+  border-radius:16px 16px 4px 16px;padding:10px 14px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  opacity:0;transform:translateY(6px);transition:opacity .2s, transform .2s}
+.vp-bubble.show{opacity:1;transform:none}
+.vp-bubble b{color:var(--goo);font-weight:700}
+.vp-bubble small{display:block;margin-top:4px;font:400 12px var(--f-mono);color:var(--muted)}
+.vp-bubble ul{margin:6px 0 0;padding-left:18px}
+.voice-hit{animation:voiceHit 1.4s ease-out}
+@keyframes voiceHit{0%{filter:drop-shadow(0 0 0 transparent)}30%{filter:drop-shadow(0 0 22px var(--goo))}100%{filter:drop-shadow(0 0 0 transparent)}}
+@media (prefers-reduced-motion: reduce){.vp[data-state="awake"] .vp-btn,.voice-hit{animation:none}}
 </style>
 </head>
 <body>
@@ -813,6 +836,136 @@ footer .wrap{padding-block:0}
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+})();
+</script>
+
+<div class="vp" id="vp" data-state="off">
+  <div class="vp-bubble" id="vpBubble" role="status" aria-live="polite"></div>
+  <button class="vp-btn" id="vpBtn" type="button" aria-pressed="false" aria-label="Turn on voice control">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5"/></svg>
+  </button>
+</div>
+
+<script>
+/* ---------- voice portal ----------
+   Tap the mic once (browsers need a tap before they'll use the microphone).
+   Then say "Hey Portal" and a command, e.g. "Hey Portal, show your projects". */
+(() => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const vp = document.getElementById('vp'), btn = document.getElementById('vpBtn'), bubble = document.getElementById('vpBubble');
+  const WAKE = /\b(hey|hi|okay|ok)[ ,]+(portal|portals|joshua|josh)\b/i;
+  const AWAKE_MS = 8000;
+
+  const go = (id, label) => ({ label, run(){
+    const el = id === 'top' ? document.getElementById('top') : document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    const t = el.querySelector('.sec-title, h2, h1');
+    if (t){ t.classList.remove('voice-hit'); void t.offsetWidth; t.classList.add('voice-hit'); }
+  }});
+  const click = (id, label) => ({ label, run(){ document.getElementById(id)?.click(); } });
+  const open = (url, label) => ({ label, run(){ if (!window.open(url, '_blank', 'noopener')) location.href = url; } });
+
+  // first match wins, so specific phrases go before general ones
+  const commands = [
+    [/\b(help|what can (i|you)|commands?)\b/, { label:'help', run: showHelp }],
+    [/\b(git ?hub|repos?|source code)\b/, open('https://github.com/Joshua-error', 'Opening GitHub')],
+    [/\blinked ?in\b/, open('https://www.linkedin.com/in/joshua-pinto-0b6073321', 'Opening LinkedIn')],
+    [/\b(copy|grab).*(e-?mail|mail)\b/, click('copyBtn', 'Email copied')],
+    [/\b(hop|switch|change|next).*(dimension|colou?r|theme|world)\b|\bdimension\b/, click('hop', 'Hopping dimension')],
+    [/\b(projects?|inventions?|built|build|work|portfolio|intrusion|detector|siem)\b/, go('inventions', 'Inventions')],
+    [/\b(skills?|gadgets?|tech|stack|tools?|languages?)\b/, go('gadgets', 'Gadget belt')],
+    [/\b(experience|missions?|internships?|jobs?|vapt|bug)\b/, go('missions', 'Missions')],
+    [/\b(education|training|college|school|certificat\w*|certs?|degree|study)\b/, go('training', 'Training grounds')],
+    [/\b(contact|e-?mail|hire|reach|message|talk)\b/, go('contact', 'Contact')],
+    [/\b(about|who|lab|yourself|bio|story)\b/, go('lab', 'Lab notes')],
+    [/\b(top|home|start|beginning|back)\b/, go('top', 'Back to the top')],
+  ];
+
+  let rec = null, on = false, awakeUntil = 0, hideTimer = 0, restartDelay = 250;
+
+  function say(html, ms = 4000){
+    bubble.innerHTML = html; bubble.classList.add('show');
+    clearTimeout(hideTimer);
+    if (ms) hideTimer = setTimeout(() => bubble.classList.remove('show'), ms);
+  }
+  function setState(s){ vp.dataset.state = s; }
+  function speak(text){
+    try { if (!('speechSynthesis' in window)) return; speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text); u.rate = 1.05; speechSynthesis.speak(u); } catch(e){}
+  }
+  function showHelp(){
+    say('Try saying <b>"Hey Portal"</b> and then:<ul><li>show your projects</li><li>what are your skills</li><li>experience · education</li><li>contact · copy email</li><li>open GitHub · LinkedIn</li><li>hop dimension</li></ul>', 9000);
+  }
+
+  function handle(cmd){
+    cmd = cmd.toLowerCase().replace(/[.,!?]/g, ' ').trim();
+    if (!cmd) return false;
+    for (const [re, action] of commands){
+      if (re.test(cmd)){
+        action.run();
+        if (action.label !== 'help'){ say('<b>' + action.label + '</b><small>"' + cmd + '"</small>', 3000); speak(action.label); }
+        return true;
+      }
+    }
+    say('Not sure about <b>"' + cmd + '"</b>. Say <b>"Hey Portal, help"</b> for ideas.', 4500);
+    return true;
+  }
+
+  function wake(){
+    awakeUntil = Date.now() + AWAKE_MS; setState('awake');
+    say('<b>Portal awake</b> · what should I show you?', AWAKE_MS);
+  }
+  function sleep(){ awakeUntil = 0; if (on) setState('idle'); }
+
+  function onResult(e){
+    for (let i = e.resultIndex; i < e.results.length; i++){
+      const r = e.results[i];
+      if (!r.isFinal) continue;
+      const text = r[0].transcript.trim();
+      const m = text.match(WAKE);
+      if (m){
+        const rest = text.slice(m.index + m[0].length);
+        if (rest.replace(/[^a-z]/gi, '').length > 1){ handle(rest); sleep(); }
+        else wake();
+      } else if (Date.now() < awakeUntil){
+        handle(text); sleep();
+      }
+    }
+    if (awakeUntil && Date.now() > awakeUntil) sleep();
+  }
+
+  function start(){
+    rec = new SR();
+    rec.lang = 'en-IN'; rec.continuous = true; rec.interimResults = false; rec.maxAlternatives = 1;
+    rec.onresult = onResult;
+    rec.onstart = () => { restartDelay = 250; };
+    rec.onerror = e => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+        stop(); say('Microphone is blocked. Allow mic access for this site and tap the mic again.', 6000);
+      } else if (e.error === 'network'){
+        stop(); say('Voice needs Google\'s speech service. Brave blocks it; try <b>Chrome</b>, <b>Edge</b> or <b>Safari</b>.', 7000);
+      }
+    };
+    // browsers end recognition after silence, so keep restarting while voice mode is on
+    rec.onend = () => { if (on) setTimeout(() => { try { rec.start(); } catch(e){} }, restartDelay = Math.min(restartDelay * 2, 4000)); };
+    try { rec.start(); } catch(e){}
+  }
+  function stop(){
+    on = false; awakeUntil = 0; setState('off');
+    btn.setAttribute('aria-pressed', 'false'); btn.setAttribute('aria-label', 'Turn on voice control');
+    if (rec){ rec.onend = null; try { rec.abort(); } catch(e){} rec = null; }
+  }
+
+  btn.addEventListener('click', () => {
+    if (!SR){ say('Voice control isn\'t supported in this browser. Try <b>Chrome</b>, <b>Edge</b> or <b>Safari</b>.', 6000); return; }
+    if (on){ stop(); say('Voice off', 1800); return; }
+    on = true; setState('idle');
+    btn.setAttribute('aria-pressed', 'true'); btn.setAttribute('aria-label', 'Turn off voice control');
+    start();
+    say('Listening for <b>"Hey Portal"</b>…<small>e.g. "Hey Portal, show your projects"</small>', 6000);
+  });
+  btn.addEventListener('contextmenu', e => { e.preventDefault(); showHelp(); });
 })();
 </script>
 
